@@ -335,15 +335,29 @@ def load_config(config_path: str = 'config/config.yaml') -> Dict[str, Any]:
     """
     try:
         import yaml
+        from pathlib import Path
         
-        if not os.path.exists(config_path):
-            logger.warning(f"Config file not found: {config_path}. Using defaults.")
+        # Try multiple paths for robustness (cwd vs project root)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        paths_to_try = [
+            config_path,
+            str(project_root / 'config' / 'config.yaml'),
+        ]
+        
+        resolved_path = None
+        for p in paths_to_try:
+            if os.path.exists(p):
+                resolved_path = p
+                break
+        
+        if resolved_path is None:
+            logger.warning(f"Config file not found. Tried: {paths_to_try}. Using defaults.")
             return {}
         
-        with open(config_path, 'r') as f:
+        with open(resolved_path, 'r') as f:
             config = yaml.safe_load(f)
         
-        logger.info(f"Configuration loaded from {config_path}")
+        logger.info(f"Configuration loaded from {resolved_path}")
         return config
         
     except Exception as e:
