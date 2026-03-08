@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.python-version
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+
+# General
+*.log
+
+# Generated artifacts / exports (keep repo light)
+bi_exports/
+output_final_all_figures/
+reports/
+
+# Local credentials / secrets (never commit)
+config/*.local.*
+**/secrets.yaml
+**/*secret*.yaml
+**/*secret*.yml
+**/*secret*.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
