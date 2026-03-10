@@ -222,9 +222,22 @@ class TransactionAnomalyDetectionSystem:
             
             # Prepare train/test data
             X_train, X_test, y_train, y_test = self.preprocessor.prepare_train_test_data(encoded_sample)
+
+            # Guard: if a split ends up with a single class, supervised training will break.
+            if getattr(y_train, "nunique", lambda: 0)() < 2 or getattr(y_test, "nunique", lambda: 0)() < 2:
+                logger.warning(
+                    "Insufficient class diversity after split (need both classes in train/test). "
+                    "Falling back to unsupervised anomaly detection."
+                )
+                has_labels = False
             
+        if has_labels:
             # Train supervised models
             supervised_models = self.anomaly_detector.train_supervised_models(X_train, y_train, X_test, y_test)
+
+            if not supervised_models:
+                logger.warning("No supervised models trained. Falling back to unsupervised anomaly detection.")
+                has_labels = False
             
             # Train advanced deep learning models
             if ADVANCED_MODELS_AVAILABLE:
@@ -291,6 +304,8 @@ class TransactionAnomalyDetectionSystem:
             
             # Generate predictions on full dataset
             X_full = encoded_full.drop(['isFraud', 'nameOrig', 'nameDest', 'step'], errors='ignore', axis=1)
+            # Ensure feature alignment between train and full (one-hot columns can differ).
+            X_full = X_full.reindex(columns=X_train.columns, fill_value=0)
             y_scores = {}
             y_preds = {}
             
@@ -312,7 +327,12 @@ class TransactionAnomalyDetectionSystem:
                 else:
                     # Traditional models
                     threshold = model_info.get('best_threshold', 0.5)
-                    y_scores[model_name] = model.predict_proba(X_full)[:, 1]
+                    proba = model.predict_proba(X_full)
+                    if getattr(proba, "ndim", 1) == 2 and proba.shape[1] >= 2:
+                        y_scores[model_name] = proba[:, 1]
+                    else:
+                        logger.warning(f"{model_name} returned single-class probabilities; skipping.")
+                        continue
                     y_preds[model_name] = (y_scores[model_name] > threshold).astype(int)
                 
                 # Save model
@@ -321,43 +341,52 @@ class TransactionAnomalyDetectionSystem:
                 except Exception as e:
                     logger.warning(f"Could not save {model_name} model: {e}")
             
-            # Save ensemble prediction
-            ensemble_scores = sum(y_scores.values()) / len(y_scores)
-            ensemble_preds = (ensemble_scores > 0.5).astype(int)
+            if not y_scores:
+                logger.warning("No valid supervised model scores produced. Falling back to unsupervised anomaly detection.")
+                has_labels = False
+            else:
+                # Save ensemble prediction
+                ensemble_scores = sum(y_scores.values()) / len(y_scores)
+                ensemble_preds = (ensemble_scores > 0.5).astype(int)
             
-            # Explain predictions with SHAP for a sample
-            sample_to_explain = X_test.iloc[:100]
-            shap_results = self.anomaly_detector.explain_predictions('xgboost', sample_to_explain)
-            
-            # Plot SHAP values
-            shap_file = os.path.join(self.output_dir, 'shap_summary.png')
-            self.visualizer.plot_shap_summary(
-                shap_results['shap_values'], 
-                sample_to_explain,
-                save_path=shap_file
-            )
-            
-            # Save results
-            detection_results = {
-                'supervised_models': supervised_models,
-                'y_scores': y_scores,
-                'y_preds': y_preds,
-                'ensemble_scores': ensemble_scores,
-                'ensemble_preds': ensemble_preds
-            }
-            
-        else:
-            logger.info("Using unsupervised anomaly detection (no fraud labels)")
+            if has_labels:
+                # Explain predictions with SHAP for a sample
+                sample_to_explain = X_test.iloc[:100]
+                shap_results = self.anomaly_detector.explain_predictions('xgboost', sample_to_explain)
+                
+                # Plot SHAP values
+                shap_file = os.path.join(self.output_dir, 'shap_summary.png')
+                self.visualizer.plot_shap_summary(
+                    shap_results['shap_values'], 
+                    sample_to_explain,
+                    save_path=shap_file
+                )
+                
+                # Save results
+                detection_results = {
+                    'supervised_models': supervised_models,
+                    'y_scores': y_scores,
+                    'y_preds': y_preds,
+                    'ensemble_scores': ensemble_scores,
+                    'ensemble_preds': ensemble_preds
+                }
+        
+        if not has_labels:
+            logger.info("Using unsupervised anomaly detection (no/insufficient fraud labels)")
             
             # Drop non-feature columns
             X_sample = encoded_sample.drop(['nameOrig', 'nameDest', 'step'], errors='ignore', axis=1)
             X_full = encoded_full.drop(['nameOrig', 'nameDest', 'step'], errors='ignore', axis=1)
+            # Ensure feature alignment between fit and score inputs.
+            X_full = X_full.reindex(columns=X_sample.columns, fill_value=0)
             
             # Train isolation forest
             iso_forest = self.anomaly_detector.train_isolation_forest(X_sample)
             
             # Generate predictions on full dataset
-            anomaly_scores = -iso_forest['model'].score_samples(X_full)
+            feature_cols = iso_forest.get('feature_columns') or list(X_sample.select_dtypes(include=[np.number]).columns)
+            X_full_num = X_full.reindex(columns=feature_cols, fill_value=0).select_dtypes(include=[np.number])
+            anomaly_scores = -iso_forest['model'].score_samples(X_full_num.values)
             anomaly_threshold = iso_forest['threshold']
             anomaly_flags = anomaly_scores > anomaly_threshold
             

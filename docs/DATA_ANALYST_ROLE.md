@@ -185,7 +185,7 @@ This Transaction Anomaly Detection project showcases end-to-end data analyst cap
 
 **Q: "How do you use AI tools in your work?"**
 
-**A:** "I've integrated GPT-4 for automated risk explanations, reducing manual review time by 60%. I built a RAG pipeline that uses vector search to find similar transactions, reducing false positives by 25%. I also use AI tools like Cursor and ChatGPT daily to accelerate development and improve code quality."
+**A:** "I've integrated GPT-4 for automated risk explanations, reducing manual review time by 60%. I built a RAG pipeline that uses vector search to find similar transactions, reducing false positives by 25%. I also use AI coding assistants daily to accelerate development and improve code quality."
 
 ## Conclusion
 

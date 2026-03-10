@@ -233,13 +233,15 @@ class AnomalyDetector:
             n_estimators=n_estimators,
             random_state=42
         )
-        X_arr = X.select_dtypes(include=[np.number]).values
+        X_num = X.select_dtypes(include=[np.number])
+        feature_columns = list(X_num.columns)
+        X_arr = X_num.values
         model.fit(X_arr)
         
         scores = -model.score_samples(X_arr)
         threshold = np.percentile(scores, 100 * (1 - self.contamination))
         
-        return {'model': model, 'threshold': float(threshold)}
+        return {'model': model, 'threshold': float(threshold), 'feature_columns': feature_columns}
     
     def explain_predictions(self, model_name: str, X: pd.DataFrame) -> Dict[str, Any]:
         """

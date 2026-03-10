@@ -452,6 +452,17 @@ class AMLVisualizer:
         plt.ylabel('')
         
         plt.subplot(1, 2, 2)
+        # Backward/forward compatible: compute percentage if the caller didn't provide it.
+        if 'percentage' not in summary_df.columns:
+            if 'flagged_count' in summary_df.columns and 'total_transactions' in summary_df.columns:
+                denom = summary_df['total_transactions'].replace(0, np.nan)
+                summary_df = summary_df.copy()
+                summary_df['percentage'] = (summary_df['flagged_count'] / denom) * 100.0
+            else:
+                # If inputs are incomplete, fall back to a safe constant.
+                summary_df = summary_df.copy()
+                summary_df['percentage'] = 0.0
+
         sns.barplot(
             y='scenario',
             x='percentage',

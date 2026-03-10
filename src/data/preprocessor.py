@@ -211,9 +211,18 @@ class TransactionPreprocessor:
         feature_cols = [col for col in df.columns if col not in exclude_cols]
         X = df[feature_cols]
         y = df[self.target]
-        
+
+        # Stratified split requires at least 2 samples in every class.
+        stratify = None
+        try:
+            class_counts = y.value_counts(dropna=False)
+            if len(class_counts) >= 2 and class_counts.min() >= 2:
+                stratify = y
+        except Exception:
+            stratify = None
+
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state, stratify=y
+            X, y, test_size=test_size, random_state=random_state, stratify=stratify
         )
         
         print(f"Training set: {X_train.shape[0]} samples")

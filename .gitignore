@@ -20,6 +20,8 @@ node_modules/
 
 # Generated artifacts / exports (keep repo light)
 bi_exports/
+data/
+output/
 output_final_all_figures/
 reports/
 

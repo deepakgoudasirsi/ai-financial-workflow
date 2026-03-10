@@ -1,0 +1,11 @@
+{
+  "combined_system": {
+    "auc_min": 0.6,
+    "f1_min": 0.1
+  },
+  "ml_based": {
+    "auc_min": 0.6,
+    "f1_min": 0.1
+  }
+}
+
