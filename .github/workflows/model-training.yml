@@ -5,11 +5,7 @@ on:
     # Run daily at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
-    inputs:
-      dataset_path:
-        description: 'Path to training dataset in Azure Blob Storage'
-        required: true
-        default: 'datasets/transactions.csv'
+    {}
 
 env:
   PYTHON_VERSION: '3.10'
@@ -45,7 +41,7 @@ jobs:
           python scripts/download_data_from_azure.py \
             --storage-account="${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
             --container="ml-data" \
-            --blob-path="${{ github.event.inputs.dataset_path || 'datasets/transactions.csv' }}" \
+            --blob-path="datasets/transactions.csv" \
             --local-path="data/transactions.csv"
 
       - name: Train models with MLflow
