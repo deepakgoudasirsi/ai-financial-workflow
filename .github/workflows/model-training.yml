@@ -16,15 +16,21 @@ jobs:
   train-model:
     name: Train ML Models
     runs-on: ubuntu-latest
+    env:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      AZURE_MLFLOW_TRACKING_URI: ${{ secrets.AZURE_MLFLOW_TRACKING_URI }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Azure Login
         uses: azure/login@v1
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -40,36 +46,33 @@ jobs:
       - name: Download training data from Azure Blob
         run: |
           python scripts/download_data_from_azure.py \
-            --storage-account="${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+            --storage-account="${{ env.AZURE_STORAGE_ACCOUNT }}" \
             --container="ml-data" \
             --blob-path="datasets/transactions.csv" \
             --local-path="data/transactions.csv"
 
       - name: Train models with MLflow
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.AZURE_MLFLOW_TRACKING_URI }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python src/main.py \
             --data data/transactions.csv \
             --output output \
-            --mlflow-uri $MLFLOW_TRACKING_URI
+            --mlflow-uri "${{ env.AZURE_MLFLOW_TRACKING_URI }}"
 
       - name: Upload models to Azure Blob Storage
-        if: ${{ secrets.AZURE_STORAGE_ACCOUNT != '' && secrets.AZURE_CREDENTIALS != '' }}
+        if: ${{ env.AZURE_STORAGE_ACCOUNT != '' && env.AZURE_CREDENTIALS != '' }}
         run: |
           az storage blob upload-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
             --destination ml-models \
             --source output/models/ \
             --pattern "*.pkl"
 
       - name: Register models in Azure ML
-        if: ${{ secrets.AZURE_RESOURCE_GROUP != '' }}
+        if: ${{ env.AZURE_RESOURCE_GROUP != '' }}
         run: |
           python scripts/register_models_azure_ml.py \
             --workspace-name "aml-workspace" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --model-path "output/models/"
 
       - name: Upload training artifacts
