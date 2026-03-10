@@ -1,6 +1,6 @@
 name: ML Model Training Pipeline
 
-"on":
+on:
   workflow_dispatch: {}
   push:
     branches: [master]
