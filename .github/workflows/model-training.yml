@@ -14,8 +14,6 @@ on:
 env:
   PYTHON_VERSION: '3.10'
   AZURE_REGION: norwayeast
-  # Optional. If not set, Azure registration step is skipped.
-  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || '' }}
 
 jobs:
   train-model:
@@ -70,11 +68,11 @@ jobs:
           --pattern "*.pkl"
 
     - name: Register models in Azure ML
-      if: ${{ env.RESOURCE_GROUP != '' }}
+      if: ${{ secrets.AZURE_RESOURCE_GROUP != '' }}
       run: |
         python scripts/register_models_azure_ml.py \
           --workspace-name "aml-workspace" \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
           --model-path "output/models/"
 
     - name: Upload training artifacts
