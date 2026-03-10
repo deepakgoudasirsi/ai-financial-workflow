@@ -5,7 +5,7 @@ on:
     # Run daily at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
-    {}
+    # Manual trigger
 
 env:
   PYTHON_VERSION: '3.10'
