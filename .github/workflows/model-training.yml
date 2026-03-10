@@ -1,11 +1,10 @@
 name: ML Model Training Pipeline
 
-on:
+"on":
+  workflow_dispatch: {}
   schedule:
     # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
-  workflow_dispatch:
-    # Manual trigger
+    - cron: "0 2 * * *"
 
 env:
   PYTHON_VERSION: '3.10'
